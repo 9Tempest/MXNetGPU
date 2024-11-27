@@ -3,66 +3,11 @@
 #define MXNET_OPERATOR_NEW_FORWARD_CUH_
 
 #include <mxnet/base.h>
-#define TILE_WIDTH 16
+
 namespace mxnet
 {
 namespace op
 {
-
-__global__ void forward_kernel_new(float *y, const float *x, const float *k, const int B, const int M, const int C, const int H, const int W, const int K, const int H_out, const int W_out, const int W_grid, const int H_grid)
-{
-// An example use of these macros:
-// float a = y4d(0,0,0,0)
-// y4d(0,0,0,0) = a
-#define y4d(i3, i2, i1, i0) y[(i3) * (M * H_out * W_out) + (i2) * (H_out * W_out) + (i1) * (W_out) + i0]
-#define x4d(i3, i2, i1, i0) x[(i3) * (C * H * W) + (i2) * (H * W) + (i1) * (W) + i0]
-#define k4d(i3, i2, i1, i0) k[(i3) * (C * K * K) + (i2) * (K * K) + (i1) * (K) + i0]
-    const int b = blockIdx.x;
-    const int m = blockIdx.y;
-    const int y_grid = blockIdx.z;
-    const int x_TILE_WIDTH = TILE_WIDTH+K-1;
-
-    const int w_base = y_grid % W_grid * TILE_WIDTH;
-    const int h_base = y_grid / W_grid * TILE_WIDTH;
-    // assert(h_base == (y_grid % W_grid * TILE_WIDTH) && "My assumption is wrong");
-    const int h0 = threadIdx.y;
-    const int w0 = threadIdx.x;
-    const int w = w_base + w0;
-    const int h = h_base + h0;
-
-    extern __shared__ float shmem[];
-    float* X_shared = shmem;
-    float* W_shared = shmem + x_TILE_WIDTH * x_TILE_WIDTH;
-    float acc = 0.0f;
-
-    for (int c = 0; c < C; c++){
-        // first load weights into shared memory [kxk]; TODO: put this on constant memory!
-        if ((h0 < K) && (w0 < K)){
-            W_shared[h0 * K + w0] = k4d(m, c, h0, w0);
-        }
-        __syncthreads();
-
-        // Load input tile into shared memory
-        if ((h < H) && (w < W)) {
-            X_shared[h0 * x_TILE_WIDTH + w0] = x4d(b, c, h, w);
-        } else {
-            X_shared[h0 * x_TILE_WIDTH + w0] = 0.0f; // Handle boundary by padding with zero
-        }
-        __syncthreads();
-
-        for (int p = 0; p < K; p++){
-            for (int q = 0; q < K; q++){
-                acc += X_shared[(h0 + p) * x_TILE_WIDTH + w0 + q] * W_shared[p * K + q];
-            }
-        }
-        __syncthreads();
-
-    }
-
-    if ((h < H_out) && (w < W_out)){
-        y4d(b, m, h, w) = acc;
-    }
-}
 
 __global__ void forward_kernel(float *y, const float *x, const float *k, const int B, const int M, const int C, const int H, const int W, const int K)
 {
@@ -127,31 +72,11 @@ void forward<gpu, float>(mshadow::Tensor<gpu, 4, float> &y, const mshadow::Tenso
     const int W = x.shape_[3];
     const int K = w.shape_[3];
 
-    // first calculate output dimensions
-    const int H_out = H - K + 1; 
-    const int W_out = W - K + 1; 
+    dim3 gridDim((B + 511) / 512);
+    dim3 blockDim(512);
 
-    // calculate W_grid and H_grid
-    const int W_grid = (W_out + TILE_WIDTH - 1) / TILE_WIDTH; // number of horizontal tiles per output map
-    const int H_grid = (H_out + TILE_WIDTH - 1) / TILE_WIDTH; // number of vertical tiles per output map
-    const int Y = W_grid * H_grid;
-
-    dim3 gridDimNew(B, M, Y);
-    dim3 blockDimNew(TILE_WIDTH, TILE_WIDTH,1);
-    // Calculate shared memory size: X_shared + W_shared
-    size_t shared_mem_size = ((TILE_WIDTH + K) * (TILE_WIDTH + K) + K * K) * sizeof(float);
-
-    // dim3 gridDim((B + 511) / 512);
-    // dim3 blockDim(512);
-
-    // // correct implementation
-    // MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
-    // forward_kernel<<<gridDim, blockDim>>>(y.dptr_, x.dptr_, w.dptr_, B, M, C, H, W, K);
-    // MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
-
-    // my optimized implementation
     MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
-    forward_kernel_new<<<gridDimNew, blockDimNew, shared_mem_size>>>(y.dptr_, x.dptr_, w.dptr_, B, M, C, H, W, K, H_out, W_out, W_grid, H_grid);
+    forward_kernel<<<gridDim, blockDim>>>(y.dptr_, x.dptr_, w.dptr_, B, M, C, H, W, K);
     MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
 }
 
