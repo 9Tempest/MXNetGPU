@@ -6,7 +6,7 @@
 
 #include <mxnet/base.h>
 #define TILE_WIDTH 16
-// #define STATS
+#define STATS
 
 #ifdef STATS
 #define PRINT(s) std::cout << s << std::endl;
@@ -56,25 +56,21 @@ __global__ void forward_kernel_new(float *y, const float *x, const int B, const 
 
     for (int c = 0; c < C; c++)
     {
-        // Flatten thread indices for coalesced access
-        int t = threadIdx.y * blockDim.x + threadIdx.x;
-        int n_threads = blockDim.x * blockDim.y;
-        int x_tile_size = x_TILE_WIDTH * x_TILE_WIDTH;
-
-        // Load input tile into shared memory with coalesced accesses
-        for (int idx = t; idx < x_tile_size; idx += n_threads)
+        // Load input tile into shared memory
+        for (int i = h0; i < x_TILE_WIDTH; i += TILE_WIDTH)
         {
-            int row = idx / x_TILE_WIDTH;
-            int col = idx % x_TILE_WIDTH;
-            int x_row = h_base + row;
-            int x_col = w_base + col;
-            if (x_row < H && x_col < W)
+            for (int j = w0; j < x_TILE_WIDTH; j += TILE_WIDTH)
             {
-                X_shared[row * x_TILE_WIDTH + col] = x4d(b, c, x_row, x_col);
-            }
-            else
-            {
-                X_shared[row * x_TILE_WIDTH + col] = 0.0f; // Handle boundary
+                int x_row = h_base + i;
+                int x_col = w_base + j;
+                if (x_row < H && x_col < W)
+                {
+                    X_shared[i * x_TILE_WIDTH + j] = x4d(b, c, x_row, x_col);
+                }
+                else
+                {
+                    X_shared[i * x_TILE_WIDTH + j] = 0.0f; // Handle boundary
+                }
             }
         }
         __syncthreads();
