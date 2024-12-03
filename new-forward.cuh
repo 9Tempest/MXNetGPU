@@ -43,10 +43,17 @@ __global__ void forward_kernel_new(float *y, const float *x, const float *k, con
         __syncthreads();
 
         // Load input tile into shared memory
-        if ((h < H) && (w < W)) {
-            X_shared[h0 * x_TILE_WIDTH + w0] = x4d(b, c, h, w);
-        } else {
-            X_shared[h0 * x_TILE_WIDTH + w0] = 0.0f; // Handle boundary by padding with zero
+        // Each thread loads multiple elements to cover the entire tile
+        for (int i = h0; i < x_TILE_WIDTH; i += TILE_WIDTH) {
+            for (int j = w0; j < x_TILE_WIDTH; j += TILE_WIDTH) {
+                int x_row = h_base + i;
+                int x_col = w_base + j;
+                if (x_row < H && x_col < W) {
+                    X_shared[i * x_TILE_WIDTH + j] = x4d(b, c, x_row, x_col);
+                } else {
+                    X_shared[i * x_TILE_WIDTH + j] = 0.0f; // Handle boundary
+                }
+            }
         }
         __syncthreads();
 
