@@ -9,7 +9,8 @@ namespace mxnet
 namespace op
 {
 
-__global__ void forward_kernel_new(float *y, const float *x, const float *k, const int B, const int M, const int C, const int H, const int W, const int K, const int H_out, const int W_out, const int W_grid, const int H_grid)
+template <int K>
+__global__ void forward_kernel_new(float *y, const float *x, const float *k, const int B, const int M, const int C, const int H, const int W, const int H_out, const int W_out, const int W_grid, const int H_grid)
 {
 // An example use of these macros:
 // float a = y4d(0,0,0,0)
@@ -20,7 +21,7 @@ __global__ void forward_kernel_new(float *y, const float *x, const float *k, con
     const int b = blockIdx.x;
     const int m = blockIdx.y;
     const int y_grid = blockIdx.z;
-    const int x_TILE_WIDTH = TILE_WIDTH+K-1;
+    constexpr int x_TILE_WIDTH = TILE_WIDTH+K-1;
 
     const int w_base = y_grid % W_grid * TILE_WIDTH;
     const int h_base = y_grid / W_grid * TILE_WIDTH;
@@ -57,11 +58,18 @@ __global__ void forward_kernel_new(float *y, const float *x, const float *k, con
         }
         __syncthreads();
 
-        for (int p = 0; p < K; p++){
-            for (int q = 0; q < K; q++){
-                acc += X_shared[(h0 + p) * x_TILE_WIDTH + w0 + q] * W_shared[p * K + q];
+        float partial_sum = 0.0f;
+        // Since K = 7, unroll the loops manually
+        #pragma unroll
+        for (int p = 0; p < K; p++) {
+            #pragma unroll
+            for (int q = 0; q < K; q++) {
+                int x_row = h0 + p;
+                int x_col = w0 + q;
+                partial_sum += X_shared[x_row * x_TILE_WIDTH + x_col] * W_shared[p * K + q];
             }
         }
+        acc += partial_sum;
         __syncthreads();
 
     }
@@ -132,7 +140,10 @@ void forward<gpu, float>(mshadow::Tensor<gpu, 4, float> &y, const mshadow::Tenso
     const int C = x.shape_[1];
     const int H = x.shape_[2];
     const int W = x.shape_[3];
-    const int K = w.shape_[3];
+    constexpr int K = 7; // filter size
+
+    // Print all these shapes 
+    // std::cout << "B is " << B << " M is " << M << " C is " << C << " H is " << H << " W is " << W << " K is " << K << std::endl; 
 
     // first calculate output dimensions
     const int H_out = H - K + 1; 
@@ -148,17 +159,9 @@ void forward<gpu, float>(mshadow::Tensor<gpu, 4, float> &y, const mshadow::Tenso
     // Calculate shared memory size: X_shared + W_shared
     size_t shared_mem_size = ((TILE_WIDTH + K) * (TILE_WIDTH + K) + K * K) * sizeof(float);
 
-    // dim3 gridDim((B + 511) / 512);
-    // dim3 blockDim(512);
-
-    // // correct implementation
-    // MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
-    // forward_kernel<<<gridDim, blockDim>>>(y.dptr_, x.dptr_, w.dptr_, B, M, C, H, W, K);
-    // MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
-
     // my optimized implementation
     MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
-    forward_kernel_new<<<gridDimNew, blockDimNew, shared_mem_size>>>(y.dptr_, x.dptr_, w.dptr_, B, M, C, H, W, K, H_out, W_out, W_grid, H_grid);
+    forward_kernel_new<K><<<gridDimNew, blockDimNew, shared_mem_size>>>(y.dptr_, x.dptr_, w.dptr_, B, M, C, H, W, H_out, W_out, W_grid, H_grid);
     MSHADOW_CUDA_CALL(cudaDeviceSynchronize());
 }
 
