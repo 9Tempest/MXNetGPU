@@ -28,16 +28,6 @@ __global__ void forward_kernel_new(float *y, const float *x, const int B, const 
                                    const int H, const int W, const int H_out, const int W_out,
                                    const int W_grid, const int H_grid)
 {
-    #define y4d(i3, i2, i1, i0) y[(i3) * (M * H_out * W_out) + \
-                                    (i2) * (H_out * W_out) + \
-                                    (i1) * (W_out) + i0]
-    #define x4d(i3, i2, i1, i0) x[(i3) * (C * H * W) + \
-                                    (i2) * (H * W) + \
-                                    (i1) * (W) + i0]
-    #define k4d(i3, i2, i1, i0) const_k[(i3) * (C * K * K) + \
-                                         (i2) * (K * K) + \
-                                         (i1) * (K) + i0]
-
     const int b = blockIdx.x;
     const int m = blockIdx.y;
     const int y_grid = blockIdx.z;
@@ -52,43 +42,56 @@ __global__ void forward_kernel_new(float *y, const float *x, const int B, const 
 
     extern __shared__ float X_shared[];
 
+    // Precompute strides
+    int x_stride_c = H * W;
+    int x_stride_h = W;
+
+    int y_stride_m = H_out * W_out;
+    int y_stride_h = W_out;
+
+    int k_stride_c = K * K;
+    int k_stride_p = K;
+
+    const float *x_base = x + b * C * H * W;
+    float *y_base = y + b * M * H_out * W_out;
+
     float acc = 0.0f;
 
     for (int c = 0; c < C; c++)
     {
-        // Flatten thread indices for coalesced access
-        int t = threadIdx.y * blockDim.x + threadIdx.x;
-        int n_threads = blockDim.x * blockDim.y;
-        int x_tile_size = x_TILE_WIDTH * x_TILE_WIDTH;
+        const float *x_c_base = x_base + c * x_stride_c;
+        const float *k_c_base = const_k + m * C * K * K + c * k_stride_c;
 
-        // Load input tile into shared memory with coalesced accesses
-        for (int idx = t; idx < x_tile_size; idx += n_threads)
+        // Load input tile into shared memory
+        for (int i = h0; i < x_TILE_WIDTH; i += blockDim.y)
         {
-            int row = idx / x_TILE_WIDTH;
-            int col = idx % x_TILE_WIDTH;
-            int x_row = h_base + row;
-            int x_col = w_base + col;
-            if (x_row < H && x_col < W)
+            for (int j = w0; j < x_TILE_WIDTH; j += blockDim.x)
             {
-                X_shared[row * x_TILE_WIDTH + col] = x4d(b, c, x_row, x_col);
-            }
-            else
-            {
-                X_shared[row * x_TILE_WIDTH + col] = 0.0f; // Handle boundary
+                int x_row = h_base + i;
+                int x_col = w_base + j;
+                float value = 0.0f;
+                if (x_row < H && x_col < W)
+                {
+                    value = x_c_base[x_row * x_stride_h + x_col];
+                }
+                X_shared[i * x_TILE_WIDTH + j] = value;
             }
         }
         __syncthreads();
 
         // Perform convolution using weights from constant memory
+        int x_shared_base = h0 * x_TILE_WIDTH + w0;
         #pragma unroll
         for (int p = 0; p < K; p++)
         {
+            int x_row_offset = p * x_TILE_WIDTH;
             #pragma unroll
             for (int q = 0; q < K; q++)
             {
-                int x_row = h0 + p;
-                int x_col = w0 + q;
-                acc += X_shared[x_row * x_TILE_WIDTH + x_col] * k4d(m, c, p, q);
+                int shared_mem_idx = x_shared_base + x_row_offset + q;
+                float x_val = X_shared[shared_mem_idx];
+                float k_val = k_c_base[p * K + q];
+                acc += x_val * k_val;
             }
         }
         __syncthreads();
@@ -96,14 +99,9 @@ __global__ void forward_kernel_new(float *y, const float *x, const int B, const 
 
     if (h < H_out && w < W_out)
     {
-        y4d(b, m, h, w) = acc;
+        y_base[m * y_stride_m + h * y_stride_h + w] = acc;
     }
-
-    #undef y4d
-    #undef x4d
-    #undef k4d
 }
-
 template <>
 void forward<gpu, float>(mshadow::Tensor<gpu, 4, float> &y, const mshadow::Tensor<gpu, 4, float> &x, const mshadow::Tensor<gpu, 4, float> &w)
 {
