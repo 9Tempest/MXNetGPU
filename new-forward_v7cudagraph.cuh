@@ -43,8 +43,8 @@ __global__ void forward_kernel_2(float *y, const float *x)
     extern __shared__ float X_shared[];
 
     // Precompute strides
-    constexpr int x_stride_h = 72;
-    constexpr int y_stride_h = 66;
+    const int x_stride_h = 72;
+    const int y_stride_h = 66;
 
     const float *x_base = x + b * 1 * 72 * 72;
     float *y_base = y + b * 12 * 66 * 66;
@@ -107,25 +107,21 @@ __global__ void forward_kernel_1(float *y, const float *x)
 
     extern __shared__ float X_shared[];
 
-    // Shared memory double buffering
-    float *X_shared_A = X_shared;
-    float *X_shared_B = X_shared + x_TILE_WIDTH * x_TILE_WIDTH_PADDED;
-
     // Precompute strides
-    constexpr int x_stride_c = 33 * 33;
-    constexpr int x_stride_h = 33;
-    constexpr int y_stride_m = 27 * 27;
-    constexpr int y_stride_h = 27;
+    const int x_stride_c = 33 * 33;
+    const int x_stride_h = 33;
+    const int y_stride_m = 27 * 27;
+    const int y_stride_h = 27;
 
     const float *x_base = x + b * 12 * 33 * 33;
     float *y_base = y + b * 24 * 27 * 27;
 
     float acc = 0.0f;
 
-    // Load data for the first channel into Buffer A
-    int c = 0;
+    for (int c = 0; c < 12; c++)
     {
         const float *x_c_base = x_base + c * x_stride_c;
+        const float *k_c_base = const_k + m * 12 * K * K + c * K * K;
 
         // Load input tile into shared memory with padding
         for (int i = h0; i < x_TILE_WIDTH; i += TILE_WIDTH_K1)
@@ -134,42 +130,14 @@ __global__ void forward_kernel_1(float *y, const float *x)
             {
                 int x_row = h_base + i;
                 int x_col = w_base + j;
-                X_shared_A[i * x_TILE_WIDTH_PADDED + j] = x_c_base[x_row * x_stride_h + x_col];
+                X_shared[i * x_TILE_WIDTH_PADDED + j] = x_c_base[x_row * x_stride_h + x_col];
             }
         }
-    }
-    __syncthreads();
-
-    // Start from the first channel
-    for (c = 0; c < 12; c++)
-    {
-        // Determine buffers for current and next channels
-        float *X_shared_current = (c % 2 == 0) ? X_shared_A : X_shared_B;
-        float *X_shared_next = (c % 2 == 0) ? X_shared_B : X_shared_A;
-
-        // Load data for the next channel (if not the last channel)
-        if (c + 1 < 12)
-        {
-            const float *x_c_base_next = x_base + (c + 1) * x_stride_c;
-
-            // Load input tile into shared memory with padding
-            for (int i = h0; i < x_TILE_WIDTH; i += TILE_WIDTH_K1)
-            {
-                for (int j = w0; j < x_TILE_WIDTH; j += TILE_WIDTH_K1)
-                {
-                    int x_row = h_base + i;
-                    int x_col = w_base + j;
-                    X_shared_next[i * x_TILE_WIDTH_PADDED + j] = x_c_base_next[x_row * x_stride_h + x_col];
-                }
-            }
-        }
-
-        // // Wait for data to be loaded for the current channel
-        // __syncthreads();
+        __syncthreads();
 
         // Perform convolution using weights from constant memory
-        const float *k_c_base = const_k + m * 12 * K * K + c * K * K;
         int x_shared_base = h0 * x_TILE_WIDTH_PADDED + w0;
+
         #pragma unroll
         for (int p = 0; p < K; p++)
         {
@@ -178,17 +146,12 @@ __global__ void forward_kernel_1(float *y, const float *x)
             for (int q = 0; q < K; q++)
             {
                 int shared_mem_idx = x_shared_base + x_row_offset + q;
-                float x_val = X_shared_current[shared_mem_idx];
+                float x_val = X_shared[shared_mem_idx];
                 float k_val = k_c_base[p * K + q];
                 acc += x_val * k_val;
             }
         }
-
-        // Synchronize before next iteration if not the last channel
-        if (c + 1 < 12)
-        {
-            __syncthreads();
-        }
+        __syncthreads();
     }
 
     // Write the result to the output
@@ -235,7 +198,7 @@ void forward<gpu, float>(
         int Y = W_grid * H_grid;
         dim3 gridDimNew(B, M, Y);
         // size is x_TILE_WIDTH * x_TILE_WIDTH_PADDED * sizeof(float)
-        size_t shared_mem_size = 2 * (TILE_WIDTH_K1 + K - 1) * (TILE_WIDTH_K1 + K) * sizeof(float);
+        size_t shared_mem_size = (TILE_WIDTH_K1 + K - 1) * (TILE_WIDTH_K1 + K) * sizeof(float);
 
         // Launch kernel on the stream
         forward_kernel_1<<<gridDimNew, blockDimNew, shared_mem_size, stream>>>(y.dptr_, x.dptr_);
