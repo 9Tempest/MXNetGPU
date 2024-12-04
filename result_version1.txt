@@ -1,0 +1,93 @@
+==PROF== Target process 1867231 terminated before first instrumented API call.
+Loading fashion-mnist data... done
+Loading model...[17:28:32] src/nnvm/legacy_json_util.cc:209: Loading symbol saved by previous version v0.11.0. Attempting to upgrade...
+[17:28:32] src/nnvm/legacy_json_util.cc:217: Symbol successfully upgraded!
+==PROF== Connected to process 1867183 (/usr/bin/python2.7)
+ done
+New Inference
+Shared memory size is 2312
+==PROF== Profiling "void mxnet::op::forward_kernel_new<(int)7>(float *, const float *, const float *, int, int, int, int, int, int, int, int, int)": 0%....50%....100% - 20 passes
+Op Time: 2.143791
+Shared memory size is 2312
+==PROF== Profiling "void mxnet::op::forward_kernel_new<(int)7>(float *, const float *, const float *, int, int, int, int, int, int, int, int, int)": 0%....50%....100% - 20 passes
+Op Time: 3.641242
+Correctness: 0.7955 Model: eecs498
+==PROF== Disconnected from process 1867183
+[1867183] python2.7@127.0.0.1
+  void mxnet::op::forward_kernel_new<(int)7>(float *, const float *, const float *, int, int, int, int, int, int, int, int, int), 2024-Dec-03 17:28:39, Context 1, Stream 7
+    Section: GPU Speed Of Light Throughput
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    DRAM Frequency                                                           cycle/usecond                         876.45
+    SM Frequency                                                             cycle/nsecond                           1.25
+    Elapsed Cycles                                                                   cycle                     57,849,800
+    Memory [%]                                                                           %                          73.35
+    DRAM Throughput                                                                      %                          27.57
+    Duration                                                                       msecond                          46.27
+    L1/TEX Cache Throughput                                                              %                          73.34
+    L2 Cache Throughput                                                                  %                           8.52
+    SM Active Cycles                                                                 cycle                  57,852,681.52
+    Compute (SM) [%]                                                                     %                          40.08
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    WRN   Memory is more heavily utilized than Compute: Look at the Memory Workload Analysis section to identify the L1 
+          bottleneck. Check memory replay (coalescing) metrics to make sure you're efficiently utilizing the bytes      
+          transferred. Also consider whether it is possible to do more work per memory access (kernel fusion) or        
+          whether there are values you can (re)compute.                                                                 
+
+    Section: Compute Workload Analysis
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    Executed Ipc Active                                                         inst/cycle                           1.37
+    Executed Ipc Elapsed                                                        inst/cycle                           1.37
+    Issue Slots Busy                                                                     %                          34.26
+    Issued Ipc Active                                                           inst/cycle                           1.37
+    SM Busy                                                                              %                          34.26
+    ---------------------------------------------------------------------- --------------- ------------------------------
+          No compute pipeline is over-utilized.                                                                         
+
+    Section: Memory Workload Analysis
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    Memory Throughput                                                         Gbyte/second                         247.43
+    Mem Busy                                                                             %                          73.35
+    Max Bandwidth                                                                        %                          40.98
+    L1/TEX Hit Rate                                                                      %                          10.98
+    L2 Hit Rate                                                                          %                          39.35
+    Mem Pipes Busy                                                                       %                          40.08
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+  void mxnet::op::forward_kernel_new<(int)7>(float *, const float *, const float *, int, int, int, int, int, int, int, int, int), 2024-Dec-03 17:28:43, Context 1, Stream 7
+    Section: GPU Speed Of Light Throughput
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    DRAM Frequency                                                           cycle/usecond                         877.54
+    SM Frequency                                                             cycle/nsecond                           1.25
+    Elapsed Cycles                                                                   cycle                    169,645,183
+    Memory [%]                                                                           %                          93.09
+    DRAM Throughput                                                                      %                          25.54
+    Duration                                                                       msecond                         135.43
+    L1/TEX Cache Throughput                                                              %                          93.10
+    L2 Cache Throughput                                                                  %                           9.08
+    SM Active Cycles                                                                 cycle                 169,615,003.44
+    Compute (SM) [%]                                                                     %                          50.31
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    INF   The kernel is utilizing greater than 80.0% of the available compute or memory performance of the device. To   
+          further improve performance, work will likely need to be shifted from the most utilized to another unit.      
+          Start by analyzing L1 in the Memory Workload Analysis section.                                                
+
+    Section: Compute Workload Analysis
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    Executed Ipc Active                                                         inst/cycle                           1.40
+    Executed Ipc Elapsed                                                        inst/cycle                           1.40
+    Issue Slots Busy                                                                     %                          35.06
+    Issued Ipc Active                                                           inst/cycle                           1.40
+    SM Busy                                                                              %                          35.06
+    ---------------------------------------------------------------------- --------------- ------------------------------
+          No compute pipeline is over-utilized.                                                                         
+
+    Section: Memory Workload Analysis
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    Memory Throughput                                                         Gbyte/second                         229.52
+    Mem Busy                                                                             %                          93.09
+    Max Bandwidth                                                                        %                          52.87
+    L1/TEX Hit Rate                                                                      %                          29.59
+    L2 Hit Rate                                                                          %                          13.96
+    Mem Pipes Busy                                                                       %                          50.31
+    ---------------------------------------------------------------------- --------------- ------------------------------
+

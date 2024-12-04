@@ -18,7 +18,7 @@ module load cuda/11.6.2
 module load mkl/2022.0.2
 # ncu --help
 # ncu --query-metrics
-ncu --kernel-name-base demangled -k 'regex:.*forward_kernel_new.*' \
+ncu --kernel-name-base demangled -k 'regex:.*forward_kernel.*' \
  --section 'ComputeWorkloadAnalysis' \
  --section 'MemoryWorkloadAnalysis' \
  --section 'SpeedOfLight' \

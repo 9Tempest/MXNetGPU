@@ -23,6 +23,7 @@ namespace op
 
 __constant__ float const_k[MAX_M * MAX_C * K * K];
 
+//B is 10000 M is 24 C is 12 H is 33 W is 33 K is 7
 #define TILE_WIDTH_K2 22
 __global__ void forward_kernel_2(float *y, const float *x)
 {
@@ -88,6 +89,7 @@ __global__ void forward_kernel_2(float *y, const float *x)
     y_base[m * 66 * 66 + h * y_stride_h + w] = acc;
 }
 
+//B is 10000 M is 12 C is 1 H is 72 W is 72 K is 7
 #define TILE_WIDTH_K1 9
 __global__ void forward_kernel_1(float *y, const float *x)
 {

@@ -1,0 +1,97 @@
+==PROF== Target process 1714531 terminated before first instrumented API call.
+Loading fashion-mnist data... done
+Loading model...[18:53:54] src/nnvm/legacy_json_util.cc:209: Loading symbol saved by previous version v0.11.0. Attempting to upgrade...
+[18:53:54] src/nnvm/legacy_json_util.cc:217: Symbol successfully upgraded!
+==PROF== Connected to process 1714483 (/usr/bin/python2.7)
+==PROF== Profiling "mxnet::op::forward_kernel_2(float *, const float *)": 0%....50%....100% - 20 passes
+==PROF== Profiling "mxnet::op::forward_kernel_1(float *, const float *)": 0%....50%....100% - 20 passes
+ done
+New Inference
+Op Time: 1.812086
+Op Time: 2.735364
+Correctness: 0.7955 Model: eecs498
+==PROF== Disconnected from process 1714483
+[1714483] python2.7@127.0.0.1
+  mxnet::op::forward_kernel_2(float *, const float *), 2024-Dec-03 18:54:02, Context 1, Stream 7
+    Section: GPU Speed Of Light Throughput
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    DRAM Frequency                                                           cycle/usecond                         878.21
+    SM Frequency                                                             cycle/nsecond                           1.25
+    Elapsed Cycles                                                                   cycle                     34,463,245
+    Memory [%]                                                                           %                          71.86
+    DRAM Throughput                                                                      %                          36.22
+    Duration                                                                       msecond                          27.56
+    L1/TEX Cache Throughput                                                              %                          72.03
+    L2 Cache Throughput                                                                  %                          12.42
+    SM Active Cycles                                                                 cycle                  34,380,852.11
+    Compute (SM) [%]                                                                     %                          65.20
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    INF   Compute and Memory are well-balanced: To reduce runtime, both computation and memory traffic must be reduced. 
+          Check both the Compute Workload Analysis and Memory Workload Analysis sections.                               
+
+    Section: Compute Workload Analysis
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    Executed Ipc Active                                                         inst/cycle                           1.53
+    Executed Ipc Elapsed                                                        inst/cycle                           1.53
+    Issue Slots Busy                                                                     %                          38.27
+    Issued Ipc Active                                                           inst/cycle                           1.53
+    SM Busy                                                                              %                          38.27
+    ---------------------------------------------------------------------- --------------- ------------------------------
+          ADU is the highest-utilized pipeline (65.4%). The pipeline is well-utilized and might become a bottleneck if  
+          more work is added. See the Kernel Profiling Guide                                                            
+          (https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#metrics-decoder) or hover over the          
+          pipeline name to understand the workloads handled by each pipeline. The Instruction Statistics section shows  
+          the mix of executed instructions in this kernel.                                                              
+
+    Section: Memory Workload Analysis
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    Memory Throughput                                                         Gbyte/second                         325.70
+    Mem Busy                                                                             %                          71.86
+    Max Bandwidth                                                                        %                          38.67
+    L1/TEX Hit Rate                                                                      %                          26.44
+    L2 Hit Rate                                                                          %                          43.16
+    Mem Pipes Busy                                                                       %                          65.20
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
+  mxnet::op::forward_kernel_1(float *, const float *), 2024-Dec-03 18:54:04, Context 1, Stream 7
+    Section: GPU Speed Of Light Throughput
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    DRAM Frequency                                                           cycle/usecond                         876.19
+    SM Frequency                                                             cycle/nsecond                           1.25
+    Elapsed Cycles                                                                   cycle                    113,455,127
+    Memory [%]                                                                           %                          96.51
+    DRAM Throughput                                                                      %                          60.19
+    Duration                                                                       msecond                          90.72
+    L1/TEX Cache Throughput                                                              %                          96.52
+    L2 Cache Throughput                                                                  %                          21.58
+    SM Active Cycles                                                                 cycle                 113,175,020.58
+    Compute (SM) [%]                                                                     %                          86.90
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    INF   The kernel is utilizing greater than 80.0% of the available compute or memory performance of the device. To   
+          further improve performance, work will likely need to be shifted from the most utilized to another unit.      
+          Start by analyzing L1 in the Memory Workload Analysis section.                                                
+
+    Section: Compute Workload Analysis
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    Executed Ipc Active                                                         inst/cycle                           2.02
+    Executed Ipc Elapsed                                                        inst/cycle                           2.02
+    Issue Slots Busy                                                                     %                          50.57
+    Issued Ipc Active                                                           inst/cycle                           2.02
+    SM Busy                                                                              %                          50.57
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    WRN   ADU is the highest-utilized pipeline (86.9%). The pipeline is over-utilized and likely a performance          
+          bottleneck. See the Kernel Profiling Guide                                                                    
+          (https://docs.nvidia.com/nsight-compute/ProfilingGuide/index.html#metrics-decoder) or hover over the          
+          pipeline name to understand the workloads handled by each pipeline. The Instruction Statistics section shows  
+          the mix of executed instructions in this kernel.                                                              
+
+    Section: Memory Workload Analysis
+    ---------------------------------------------------------------------- --------------- ------------------------------
+    Memory Throughput                                                         Gbyte/second                         540.03
+    Mem Busy                                                                             %                          96.51
+    Max Bandwidth                                                                        %                          60.19
+    L1/TEX Hit Rate                                                                      %                          43.36
+    L2 Hit Rate                                                                          %                          22.15
+    Mem Pipes Busy                                                                       %                          86.90
+    ---------------------------------------------------------------------- --------------- ------------------------------
+
